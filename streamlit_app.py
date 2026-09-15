@@ -5,7 +5,21 @@ import joblib
 from pathlib import Path
 
 st.set_page_config(page_title="MLB ABS Challenge Decision Tool")
-st.title("MLB ABS Challenge Decision Tool")
+# header with my LinkedIn
+hcol1, hcol2 = st.columns([4, 1])
+with hcol1:
+    st.title("MLB ABS Challenge Decision Tool")
+with hcol2:
+    st.markdown("""
+    <div style="text-align: right; padding-top: 20px;">
+        <a href="https://www.linkedin.com/in/malcolm-gaynor-531688225/" target="_blank">
+            <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" 
+                 width="30" height="30" style="margin-right: 10px;">
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+
+#st.title("MLB ABS Challenge Decision Tool")
 #st.subheader("Should a player use an ABS challenge?")
 #st.write("----")
 
@@ -420,3 +434,5 @@ with limitations_tab:
     st.markdown("- Models skew conservatively, because they are built on a skewed dataset (more no-challenge situations than challenge situations). To fix this, future work could include upsampling, or adjusting the reward function that trains the ML models to reward succesfully challenging.")
     st.markdown("- Because the optimization is done only considering borderline pitches, the value of keeping a challenge for obvious, non-borderline missed calls is not included. This is one reason why the conservative nature of the models may be valuable in practice.")
     st.markdown("- The models do not take into consideration the individual player challenge success probabilities, as some players have had more success challenging than others. This data is currently not included in the model.")
+
+st.write("Project created by Malcolm Gaynor. Please don't hesitate to reach out with any questions or comments: malcolm.t.gaynor@gmail.com")
