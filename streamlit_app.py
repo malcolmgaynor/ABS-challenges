@@ -115,7 +115,7 @@ with challenge_tab:
                 dontrunyethitter = True
     with col5:
         st.subheader("Pitcher")
-        era_or_fip = st.selectbox("Select metric to measure pitchers", options=["None (assume league average)","ERA", "FIP", "wOBA allowed"])
+        era_or_fip = st.selectbox("Select metric to measure pitchers (or choose pitcher from database)", options=["None (assume league average)","ERA", "FIP", "wOBA allowed","Choose pitcher from database"])
         dontrunyetpitcher = False
         if era_or_fip == "ERA":
             input_pitcher_era = st.number_input("Pitcher ERA", min_value=0.0, max_value=100.0, value = league_average_era, step=0.01)
