@@ -9,6 +9,7 @@ st.set_page_config(page_title="MLB ABS Challenge Decision Tool")
 hcol1, hcol2 = st.columns([4, 1])
 with hcol1:
     st.title("MLB ABS Challenge Decision Tool")
+    st.write("Created by Malcolm Gaynor")
 with hcol2:
     st.markdown("""
     <div style="text-align: right; padding-top: 20px;">
@@ -56,7 +57,16 @@ hist_gb_2_left = model_artifact["hist_gb_2_left"]
 hist_gb_1_left_mean_importance = model_artifact["hist_gb_1_left_mean_importance"]
 hist_gb_2_left_mean_importance = model_artifact["hist_gb_2_left_mean_importance"]
 
+hitterwoba = pd.read_csv("woba_stats.csv")
+pitcherwoba = pd.read_csv("pitcher_woba_stats.csv")
 
+#remove last_name, first_name = AVERAGE
+hitterwoba = hitterwoba[hitterwoba["last_name, first_name"] != "AVERAGE"]
+pitcherwoba = pitcherwoba[pitcherwoba["last_name, first_name"] != "AVERAGE"]
+
+#only keep name and woba columns
+hitterwoba = hitterwoba[["last_name, first_name", "woba"]]
+pitcherwoba = pitcherwoba[["last_name, first_name", "woba"]]
 
 with challenge_tab:
     st.subheader("Should a player use an ABS challenge?")
@@ -80,25 +90,47 @@ with challenge_tab:
         with col3_strikes:
             input_strikes = st.radio("Number of strikes", options=[0, 1, 2])
     input_inning = st.select_slider("Inning", options=list(range(1, 10)))
+
+    #league averages used both as number_input defaults and to scale user-entered stats
+    league_average_woba = 0.316
+    league_average_ops = 0.719
+    league_average_era = 4.2
+    league_average_fip = 4.0
+
     col4, col5 = st.columns(2)
     with col4:
         st.subheader("Hitter")
-        woba_or_ops = st.selectbox("Select metric to measure hitters", options=["None (assume league average)","wOBA", "OPS"])
+        dontrunyethitter = False
+        woba_or_ops = st.selectbox("Select metric to measure hitters (or choose hitter from database)", options=["None (assume league average)","wOBA", "OPS","Choose hitter from database"])
         if woba_or_ops == "wOBA":
-            input_batter_woba = st.number_input("Batter wOBA", min_value=0.0, max_value=1.0, step=0.001)
+            input_batter_woba = st.number_input("Batter wOBA", min_value=0.0, max_value=2.0, value=league_average_woba, step=0.001, format="%.3f")
         elif woba_or_ops == "OPS":
-            input_batter_ops = st.number_input("Batter OPS", min_value=0.0, max_value=2.0, step=0.001)
+            input_batter_ops = st.number_input("Batter OPS", min_value=0.0, max_value=5.0, value=league_average_ops, step=0.001, format="%.3f")
+        elif woba_or_ops == "Choose hitter from database":
+            input_batter_from_db = st.selectbox("Enter hitter name from database. Stats include qualified hitters from the 2026 season through August.", options = ['']+hitterwoba["last_name, first_name"].tolist())
+            if input_batter_from_db != '':
+                dontrunyethitter = False
+                input_batter_woba = hitterwoba.loc[hitterwoba["last_name, first_name"] == input_batter_from_db, "woba"].values[0]
+            else:
+                dontrunyethitter = True
     with col5:
         st.subheader("Pitcher")
         era_or_fip = st.selectbox("Select metric to measure pitchers", options=["None (assume league average)","ERA", "FIP", "wOBA allowed"])
-
+        dontrunyetpitcher = False
         if era_or_fip == "ERA":
-            input_pitcher_era = st.number_input("Pitcher ERA", min_value=0.0, max_value=10.0, step=0.01)
+            input_pitcher_era = st.number_input("Pitcher ERA", min_value=0.0, max_value=100.0, value = league_average_era, step=0.01)
         elif era_or_fip == "FIP":
-            input_pitcher_fip = st.number_input("Pitcher FIP", min_value=0.0, max_value=10.0, step=0.01)
+            input_pitcher_fip = st.number_input("Pitcher FIP", min_value=0.0, max_value=100.0, value = league_average_fip, step=0.01)
 
         elif era_or_fip == "wOBA allowed":
-            input_pitcher_woba_allowed = st.number_input("Pitcher wOBA allowed", min_value=0.0, max_value=1.0, step=0.001)
+            input_pitcher_woba_allowed = st.number_input("Pitcher wOBA allowed", min_value=0.0, max_value=2.0, value=league_average_woba, step=0.001)
+        elif era_or_fip == "Choose pitcher from database":
+            input_pitcher_from_db = st.selectbox("Enter pitcher name from database. Stats include qualified pitchers from the 2026 season through August.", options = ['']+pitcherwoba["last_name, first_name"].tolist())
+            if input_pitcher_from_db != '':
+                input_pitcher_woba_allowed = pitcherwoba.loc[pitcherwoba["last_name, first_name"] == input_pitcher_from_db, "woba"].values[0]
+                dontrunyetpitcher = False
+            else:
+                dontrunyetpitcher = True
 
     st.subheader("Challenge details")
     col6, col7 = st.columns(2)
@@ -111,19 +143,13 @@ with challenge_tab:
         st.warning("PITCHERS SHOULD NOT CHALLENGE. LEAVE THAT TO THE CATCHER.")
 
     
-
-    league_average_woba = 0.316
-    league_average_ops = 0.719
-    league_average_era = 4.2
-    league_average_fip = 4
-
-
     if woba_or_ops == "None (assume league average)":
         input_batter_woba_plus = 1
-    elif woba_or_ops == "wOBA":
-        input_batter_woba_plus = input_batter_woba / league_average_woba
-    else:
+    elif woba_or_ops == "OPS":
         input_batter_woba_plus = input_batter_ops / league_average_ops
+    else:
+        if not dontrunyethitter:
+            input_batter_woba_plus = input_batter_woba / league_average_woba
 
     if era_or_fip == "None (assume league average)":
         input_pitcher_woba_plus = 1
@@ -132,7 +158,8 @@ with challenge_tab:
     elif era_or_fip == "FIP":
         input_pitcher_woba_plus = input_pitcher_fip / league_average_fip
     else:
-        input_pitcher_woba_plus = input_pitcher_woba_allowed / league_average_woba
+        if not dontrunyetpitcher:
+            input_pitcher_woba_plus = input_pitcher_woba_allowed / league_average_woba
 
 
     input_risp = int(input_on_2b or input_on_3b)
@@ -156,9 +183,16 @@ with challenge_tab:
         st.markdown("- Logistic Regression is a linear model. Unlike the decision trees, it considers everything about the situation, and specifically prioritizes the batter/pitcher quality and baserunners. It is also generally conservative.")
         st.markdown("- Histogram Gradient Boosting is the most complex model. It is the most aggressive, and performs the best overall (while still skewing slightly conservative), but is not interpretable. The inning is still the most important predictor overall.")
 
-    st.write("----")    
+    st.write("----") 
 
-    if challenge_player != "Pitcher" and st.button(
+    if challenge_player == "Pitcher": 
+        st.warning("Choose either Batter or Catcher to calculate challenge decision. Pitchers should not challenge.")   
+
+    if dontrunyetpitcher or dontrunyethitter:
+        st.warning("Choose a hitter and pitcher (or input data manually) to calculate challenge decision.")   
+
+
+    if challenge_player != "Pitcher" and not dontrunyethitter and not dontrunyetpitcher and st.button(
         "Should you challenge?",
         use_container_width=True,
     ):
@@ -431,8 +465,9 @@ with limitations_tab:
     st.subheader("Limitations")
     st.markdown("- Model decisions (challenge or no challenge) are of somewhat limited value, due to the relatively poor performance of the models (especially the interpretable ones)")
     st.markdown("- The models are difficult to use in real game situations, even the decision trees are not the most practical to use. The most value of the models could come from the general takeaways/strategy, not the specific rules.")
-    st.markdown("- Models skew conservatively, because they are built on a skewed dataset (more no-challenge situations than challenge situations). To fix this, future work could include upsampling, or adjusting the reward function that trains the ML models to reward succesfully challenging.")
+    st.markdown("- Models skew conservatively, because they are built on a skewed dataset (more no-challenge situations than challenge situations). To fix this, future work could include upsampling, or adjusting the reward function that trains the ML models to reward successfully challenging.")
     st.markdown("- Because the optimization is done only considering borderline pitches, the value of keeping a challenge for obvious, non-borderline missed calls is not included. This is one reason why the conservative nature of the models may be valuable in practice.")
     st.markdown("- The models do not take into consideration the individual player challenge success probabilities, as some players have had more success challenging than others. This data is currently not included in the model.")
 
+st.write("---")
 st.write("Project created by Malcolm Gaynor. Please don't hesitate to reach out with any questions or comments: malcolm.t.gaynor@gmail.com")
